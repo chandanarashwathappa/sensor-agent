@@ -1,0 +1,28 @@
+
+DATASET STATISTICS - Computed from the actual AI4I 2020 data
+
+- Total machine records: 10000
+- Total failures: 339 (3.4% failure rate)
+- Normal operations: 9661
+
+FAILURE MODE COUNTS:
+- TWF (Tool Wear Failure): 46 occurrences
+- HDF (Heat Dissipation Failure): 115 occurrences
+- PWF (Power Failure): 95 occurrences
+- OSF (Overstrain Failure): 98 occurrences
+- RNF (Random Failure): 19 occurrences
+
+AVERAGE SENSOR READINGS:
+When machines operated NORMALLY (no failure):
+- Air temperature: 300.0 K
+- Process temperature: 310.0 K
+- Rotational speed: 1540 rpm
+- Torque: 39.6 Nm
+- Tool wear: 106.7 minutes
+
+When machines FAILED:
+- Air temperature: 300.9 K
+- Process temperature: 310.3 K
+- Rotational speed: 1496 rpm
+- Torque: 50.2 Nm
+- Tool wear: 143.8 minutes

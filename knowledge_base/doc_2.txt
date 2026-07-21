@@ -1,0 +1,14 @@
+
+FAILURE MODES - AI4I 2020 Predictive Maintenance Dataset
+
+There are five distinct failure modes. A machine is marked as failed if any one occurs.
+
+1. TWF (Tool Wear Failure): The tool wears out and fails. Occurs when tool wear reaches a high randomized threshold (around 200-240 minutes of use). The tool must be replaced or the process stops.
+
+2. HDF (Heat Dissipation Failure): Heat cannot be dissipated fast enough. Occurs when the difference between air and process temperature is below about 8.6 K, combined with a low rotational speed (below roughly 1380 rpm).
+
+3. PWF (Power Failure): The power required for the process is outside the acceptable range. Power is torque multiplied by rotational speed (in rad/s). Failure occurs when this power is below about 3500 W or above about 9000 W.
+
+4. OSF (Overstrain Failure): The machine is overstrained. Occurs when the product of tool wear and torque exceeds a threshold that depends on product quality (around 11000 minNm for L, higher for M and H).
+
+5. RNF (Random Failure): A random failure with no specific cause. Each machine has a very small (about 0.1%) chance of failing randomly regardless of conditions.
