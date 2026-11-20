@@ -154,15 +154,44 @@ class SensorAgent:
         return AgentResult(_text(self.llm.invoke(messages)), steps)
 
 
+def model_config() -> dict:
+    """Which LLM backend to use, from the environment (.env):
+
+    LLM_PROVIDER=ollama   local models through Ollama (default: qwen2.5:1.5b + nomic-embed-text),
+                          no API key, data never leaves the machine
+    LLM_PROVIDER=mistral  Mistral API (needs MISTRAL_API_KEY)
+    """
+    import os
+
+    provider = os.getenv("LLM_PROVIDER", "mistral").lower()
+    if provider == "ollama":
+        return {"provider": "ollama",
+                "chat_model": os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b"),
+                "embed_model": os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text"),
+                "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")}
+    if provider == "mistral":
+        return {"provider": "mistral", "chat_model": "mistral-small-latest", "embed_model": "mistral-embed"}
+    raise ValueError(f"unknown LLM_PROVIDER '{provider}', use 'mistral' or 'ollama'")
+
+
 def build_default_agent():
-    """Agent with Mistral models; needs MISTRAL_API_KEY in the environment (.env)."""
+    """Agent with the backend chosen by LLM_PROVIDER (see model_config)."""
     from dotenv import load_dotenv
-    from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 
     from .knowledge import build_documents
 
     load_dotenv()
+    cfg = model_config()
     df = A.load_data()
-    kb = KnowledgeBase(MistralAIEmbeddings(model="mistral-embed"), build_documents(df))
-    llm = ChatMistralAI(model="mistral-small-latest", temperature=0, max_tokens=512)
+    if cfg["provider"] == "ollama":
+        from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+        embeddings = OllamaEmbeddings(model=cfg["embed_model"], base_url=cfg["base_url"])
+        llm = ChatOllama(model=cfg["chat_model"], base_url=cfg["base_url"], temperature=0, num_predict=512)
+    else:
+        from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+
+        embeddings = MistralAIEmbeddings(model=cfg["embed_model"])
+        llm = ChatMistralAI(model=cfg["chat_model"], temperature=0, max_tokens=512)
+    kb = KnowledgeBase(embeddings, build_documents(df))
     return SensorAgent(llm, df, kb)

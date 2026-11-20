@@ -19,3 +19,46 @@ jobs:
 
       - name: Offline tests (no API key needed)
         run: pytest -v
+
+  eval-ollama:
+    # Runs the 20-question evaluation against a local LLM served by Ollama:
+    # no API key, nothing leaves the CI machine.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      LLM_PROVIDER: ollama
+      OLLAMA_MODEL: qwen2.5:1.5b
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > ollama.log 2>&1 &) || true
+          for i in $(seq 1 60); do curl -sf http://localhost:11434/api/tags > /dev/null && break; sleep 1; done
+          ollama --version
+
+      - name: Pull local models
+        run: |
+          ollama pull "$OLLAMA_MODEL"
+          ollama pull "$OLLAMA_EMBED_MODEL"
+          ollama list
+
+      - name: Run the 20-question evaluation
+        run: python -m evaluation.run_eval
+
+      - name: Upload evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results
+          path: evaluation/results.*
+          if-no-files-found: ignore

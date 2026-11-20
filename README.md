@@ -4,7 +4,8 @@
 
 Ask plain-English questions about machine sensor data and get answers you can check.
 Built on the **AI4I 2020 Predictive Maintenance** dataset (10,000 milling-machine records,
-339 failures) with **Mistral**, **LangChain tool calling**, **FAISS** and **Streamlit**.
+339 failures) with **LangChain tool calling**, **FAISS** and **Streamlit**, running either on the
+**Mistral API** or fully **local with Ollama** (no API key, data never leaves the machine).
 
 The point of the design: **the language model never computes numbers itself.** It
 chooses a tool. Numeric questions go to predefined, tested pandas functions, explanations
@@ -16,13 +17,13 @@ come from retrieved documentation, and the app shows every tool call and its res
 
 ```
                        ┌────────────────────────────────────────────┐
-  question ──────────► │ Mistral (mistral-small-latest, temp 0)     │
+  question ──────────► │ Mistral API or local Ollama model, temp 0  │
                        │ decides which tool(s) to call              │
                        └──────┬───────────────────────────┬─────────┘
                               │ numbers                   │ explanations
                 ┌─────────────▼─────────────┐   ┌─────────▼──────────────┐
                 │ analytics tools (pandas)  │   │ search_documents (RAG) │
-                │ count_machines            │   │ mistral-embed + FAISS  │
+                │ count_machines            │   │ embeddings + FAISS     │
                 │ failure_rate              │   │ data dictionary,       │
                 │ sensor_statistic          │   │ failure-mode rules,    │
                 │ count_threshold           │   │ usage notes            │
@@ -37,7 +38,7 @@ come from retrieved documentation, and the app shows every tool call and its res
   functions with validated arguments (sensor names, product types and failure modes are
   enums). Invalid arguments are returned to the model as an error.
 - **RAG for knowledge:** definitions, units and the physical rules behind each failure mode,
-  split by paragraph, embedded with `mistral-embed` and searched with a FAISS
+  split by paragraph, embedded with `mistral-embed` or `nomic-embed-text` (Ollama) and searched with a FAISS
   inner-product index (cosine similarity).
 - **Transparency:** the UI lists every tool call with its arguments and raw result.
 - **Grounding:** the system prompt forbids estimated numbers and requires "the dataset does
@@ -62,21 +63,25 @@ can't answer). Grading is deterministic, not done by an LLM: numeric answers mus
 expected value within a stated tolerance, text answers must contain required keywords.
 
 ```sh
-python -m evaluation.run_eval      # needs MISTRAL_API_KEY; writes evaluation/results.md
+LLM_PROVIDER=ollama python -m evaluation.run_eval     # local model via Ollama, no key
+LLM_PROVIDER=mistral python -m evaluation.run_eval    # Mistral API, needs MISTRAL_API_KEY
 ```
 
-**Result:** _run the evaluation and enter the score here, for example "18/20 correct";
-the details are in [evaluation/results.md](evaluation/results.md)._
+**CI runs the evaluation on every push** with a local model: the `eval-ollama` job installs
+Ollama, pulls `qwen2.5:1.5b` and `nomic-embed-text`, and runs all 20 questions. The score
+appears on the CI run page and the full table is uploaded as an artifact
+(`evaluation/results.md`).
 
 ## Tests (offline, in CI)
 
-22 pytest tests run without an API key:
+27 pytest tests run without an API key or a model server:
 - analytics functions against independent pandas calculations, argument validation
 - knowledge base content and FAISS retrieval (deterministic fake embeddings)
 - the agent loop with a scripted fake LLM: tool results are sent back, invalid arguments
   and unknown tools are handled, the step limit forces a final answer, and the tool schemas
   are valid for function calling
 - the grading logic of the evaluation
+- backend selection (`LLM_PROVIDER`) and Ollama tool binding
 
 ## Setup
 
@@ -86,8 +91,16 @@ cd sensor-agent
 python -m venv venv
 venv\Scripts\activate            # Windows  (Linux/macOS: source venv/bin/activate)
 pip install -r requirements.txt
-copy .env.example .env           # then put your Mistral API key into .env
+copy .env.example .env           # choose LLM_PROVIDER=ollama or mistral (+ key)
 streamlit run app.py
+```
+
+Local, without any API key: install [Ollama](https://ollama.com), then
+
+```sh
+ollama pull qwen2.5:1.5b
+ollama pull nomic-embed-text
+# in .env: LLM_PROVIDER=ollama
 ```
 
 ```sh
@@ -115,13 +128,14 @@ data/ai4i2020.csv      dataset (UCI, CC BY 4.0)
   answered as "not available" instead of being guessed.
 - The answer text is still written by the LLM, which can phrase numbers imperfectly.
   The evaluation measures this.
-- Answers depend on the Mistral API (network and API key required).
+- Small local models (1.5B parameters) choose tools less reliably than large API models; the
+  evaluation score shows by how much. Larger local models can be set with `OLLAMA_MODEL`.
 
 ## How this project was built
 
 Version 1 (RAG over generated documents) was built by me. Version 2 (tool calling, the
 analytics tools, evaluation and tests) was developed with AI assistance (Claude). I defined
-the requirements, reviewed the design and ran the evaluation.
+the requirements and reviewed the design and the evaluation results.
 
 ## Author
 
