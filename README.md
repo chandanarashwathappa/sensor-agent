@@ -72,6 +72,11 @@ Ollama, pulls `qwen2.5:1.5b` and `nomic-embed-text`, and runs all 20 questions. 
 appears on the CI run page and the full table is uploaded as an artifact
 (`evaluation/results.md`).
 
+**Latest result: 11/20 correct** with `qwen2.5:1.5b` running on the CI machine's CPU. The misses are
+seven count and statistic questions and two documentation questions; the per-question answers and the
+tools used are in the uploaded results table. Larger local models (set `OLLAMA_MODEL`) or the Mistral API are expected to do
+better; the same harness measures any backend.
+
 ## Tests (offline, in CI)
 
 27 pytest tests run without an API key or a model server:
